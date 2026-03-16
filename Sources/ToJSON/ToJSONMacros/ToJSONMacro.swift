@@ -2,6 +2,14 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftDiagnostics
+import Foundation
+
+private struct ToJSONMacroArgumentMissingMessage: SwiftDiagnostics.DiagnosticMessage {
+    let message: String = "toJSON macro requires at least one argument"
+    let diagnosticID: SwiftDiagnostics.MessageID = .init(domain: "ToJSONMacro", id: "missingArgument")
+    let severity: SwiftDiagnostics.DiagnosticSeverity = .error
+}
 
 public struct ToJSONMacro: ExpressionMacro {
     public static func expansion(
@@ -9,11 +17,13 @@ public struct ToJSONMacro: ExpressionMacro {
         in context: some MacroExpansionContext
     ) -> ExprSyntax {
         guard let argument = node.argumentList.first?.expression else {
-            fatalError("compiler bug: the macro does not have any arguments")
+            context.diagnose(.init(node: Syntax(node), message: ToJSONMacroArgumentMissingMessage()))
+            return "nil"
         }
         return """
           {
-              guard let jsonData = try? JSONSerialization.data(withJSONObject: \(raw: argument.description), options: []) else {
+              let encoder = JSONEncoder()
+              guard let jsonData = try? encoder.encode(\(raw: argument.description)) else {
                   return nil
               }
               return String(bytes: jsonData, encoding: String.Encoding.utf8)

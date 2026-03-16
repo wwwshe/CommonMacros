@@ -2,7 +2,14 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftDiagnostics
 import Foundation
+
+private struct ToDictionaryWithStringMacroArgumentMissingMessage: SwiftDiagnostics.DiagnosticMessage {
+    let message: String = "toDictionary(String) macro requires at least one argument"
+    let diagnosticID: SwiftDiagnostics.MessageID = .init(domain: "ToDictionaryWithStringMacro", id: "missingArgument")
+    let severity: SwiftDiagnostics.DiagnosticSeverity = .error
+}
 
 public struct ToDictionaryWithStringMacro: ExpressionMacro {
     public static func expansion(
@@ -10,7 +17,8 @@ public struct ToDictionaryWithStringMacro: ExpressionMacro {
         in context: some MacroExpansionContext
     ) -> ExprSyntax {
         guard let argument = node.argumentList.first?.expression else {
-            fatalError("compiler bug: the macro does not have any arguments")
+            context.diagnose(.init(node: Syntax(node), message: ToDictionaryWithStringMacroArgumentMissingMessage()))
+            return "nil"
         }
         return jsonToDictionary(argument: argument)
     }
